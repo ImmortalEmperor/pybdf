@@ -2,11 +2,11 @@ Fork of <https://github.com/sam81/pybdf>
 
 Has been modified to use native C++ through [pybind11](https://github.com/pybind/pybind11) with both C++ and original fortran still avaliable under linux. 
 
-Requires a c++ compiler (also gfortran under linux) aswell as pybind11 to be installed via:
+__Requires__ a c++ compiler (also gfortran under linux) aswell as pybind11 to be installed via:
 
 pip install pybind11
 
-Install via:
+__Install__ via:
 
 git clone https://github.com/ImmortalEmperor/pybdf.git
 
@@ -15,7 +15,9 @@ cd pybdf && pip install .
 TODO:
 Add multi-threading to C++ version for faster import
 
-__From original:__
+======
+
+_From original:_
 
 pybdf is a python library to read Biosemi 24-bit BDF files.
 

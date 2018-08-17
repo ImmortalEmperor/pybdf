@@ -3,12 +3,24 @@
 
 from numpy.distutils.core import setup
 from numpy.distutils.core import Extension
-ext1 = Extension(name = 'libforbdf',
-                 sources = ['libforbdf.f95'])
+from sysconfig import get_paths
+import pybind11, platform
+
+extentions = []
+
+if 'Win' not in platform.platform():
+	extentions.append( Extension(   name = 'libforbdf',
+		            		sources = ['libforbdf.f95']))
+
+extentions.append( Extension(   name = 'libcppbdf',
+                    sources = ['libcppbdf.cpp'],
+                    include_dirs = [pybind11.get_include(), pybind11.get_include(True)],
+                    language = 'c++')
+
 setup(name="pybdf",    
     version="0.2.5",
       py_modules=["pybdf"],
-      ext_modules = [ext1],
+      ext_modules = extentions,
       author="Samuele Carcagno",
       author_email="sam.carcagno@gmail.com;",
       description="pybdf is a python library for reading BIOSEMI bdf files.",
@@ -19,7 +31,7 @@ setup(name="pybdf",
       """,
       license="GPL v3",
       url="https://github.com/sam81/pybdf",
-      requires=['numpy (>=1.6.1)'],
+      requires=['numpy (>=1.6.1)', 'pybind11 (>=2.2)'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',

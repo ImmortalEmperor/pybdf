@@ -30,8 +30,12 @@ This module can be used to read the header and data from
  >>> rec = bdfRec.getData(channels=[0, 1], beginning=0, end=10)
 """
 from __future__ import nested_scopes, generators, division, absolute_import, with_statement, print_function, unicode_literals
-import copy, numpy, sys
-import libforbdf
+import copy, numpy, sys, os, platform
+import libcppbdf
+
+if 'Win' not in platform.platform():
+    import libforbdf
+
 from numpy import concatenate, diff, float32, where
 
 __version__ = "0.2.5"
@@ -166,7 +170,7 @@ class bdfRecording:
         self.sampRate = list(numpy.array(numpy.round(numpy.array(self.nSampRec) / self.recordDuration), dtype=numpy.int16))
         f.close()
 
-    def getData(self, beginning=0, end=None, channels=None, eventTable=True, trigChan=False, sysCodeChan=False):
+    def getData(self, beginning=0, end=None, channels=None, eventTable=True, trigChan=False, sysCodeChan=False, useCpp=True):
 
         """
         Read the data from a bdfRecording object
@@ -185,6 +189,8 @@ class bdfRecording:
             If True, return the channel containing the triggers (trigger inputs 1-8 only)
         sysCodeChan : boolean
             If True, return the channel containing the system codes
+        useCpp : boolean
+            If True and under linux, uses Cpp instead of Fortran
  
 
         Returns
@@ -232,9 +238,16 @@ class bdfRecording:
         
         #f = open(self.fileName, "rb")
         recordsToRead = end - beginning
-        data, statchan = libforbdf.read_channels(self.fileName, beginning, end, self.nChannels, self.nSampRec, self.statusChanIdx)
-        data = numpy.array(data*self.scaleFactor[0], dtype=numpy.float32)
-        trigChannel = statchan[0,:]
+        if useCpp or 'Win' in platform.platform():
+            data = numpy.zeros((self.nChannels - 1, self.nSampRec[0] * (end - beginning)), dtype=numpy.int32)
+            statchan = numpy.zeros((3, self.nSampRec[0] * (end - beginning)), dtype=numpy.int16)
+
+            libcppbdf.read_channels(data, statchan, self.fileName, beginning, end, self.nChannels, self.nSampRec[0], self.statusChanIdx)       
+        else:
+            data, statchan = libforbdf.read_channels(self.fileName, beginning, end, self.nChannels, self.nSampRec, self.statusChanIdx)
+        
+        data = (data*self.scaleFactor[0]).astype(numpy.float32)
+        trigChannel = statchan[0,:].astype(numpy.uint8)
         trigChannel2 = statchan[1,:]
         sysCodeChannel = statchan[2,:]
         chanToDel = []

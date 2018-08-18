@@ -2,6 +2,10 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/eigen.h>
+#include <thread>
+#include <vector>
+#include <cmath>
+#include <algorithm>
 
 namespace py = pybind11;
 
@@ -9,42 +13,9 @@ typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowM
 
 typedef Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowMatrixXs;
 
-void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan, char* filename, 
-                   int starttime, int endtime, int nChannels, int nSampRec, int statusChanIdx)
-{
-    std::ifstream file = std::ifstream(filename, std::ifstream::in | std::ifstream::binary);
-
-    assert(file.is_open());
-    std::cout << "Data: " << data.rows() << ", " << data.cols() << std::endl;
-
-    int nRec = endtime - starttime;
-    int startpos = (nChannels + 1) * 256 + starttime * nSampRec * 3 * nChannels;
-
-    file.seekg(0, file.end);
-    
-    size_t length = file.tellg() - startpos;
-    
-    file.seekg(0, file.beg); 
-    file.clear();
-
-    file.seekg(startpos);
-
-    uint8_t* buffer = (uint8_t*)malloc(length);
-
-    file.read((char*)buffer, length);
-
-    file.close();
-
-    // getting ordering
-    // for(int r = 0; r < data.rows(); r++){
-    //     for(int c = 0; c < data.cols(); c++){
-    //         data(r, c) = r * data.cols() + c;
-    //     }
-    // }
-
-    size_t pos = 0;
-    for(long k = 0; k < nRec; k++)
-    {
+void ThreadedRead(Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan, uint8_t* buffer, uint32_t start, uint32_t end, uint16_t nChannels, uint16_t nSampRec, uint32_t statusChanIdx){
+    uint32_t pos = start * 3 * nChannels * nSampRec;
+    for(int k = start; k < end; k++){
         for(int ch = 0; ch < nChannels; ch++)
         {
             if(ch != statusChanIdx){
@@ -64,6 +35,69 @@ void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statCha
             }
         }
     }
+}
+
+void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan, char* filename, 
+                   int starttime, int endtime, int nChannels, int nSampRec, int statusChanIdx)
+{
+    std::ifstream file = std::ifstream(filename, std::ifstream::in | std::ifstream::binary);
+
+    assert(file.is_open());
+
+    uint32_t nRec = endtime - starttime;
+    uint32_t startpos = (nChannels + 1) * 256 + starttime * nSampRec * 3 * nChannels;
+
+    file.seekg(0, file.end);
+    
+    size_t length = file.tellg() - startpos;
+    
+    file.seekg(0, file.beg); 
+    file.clear();
+
+    file.seekg(startpos);
+
+    uint8_t* buffer = (uint8_t*)malloc(length);
+
+    file.read((char*)buffer, length);
+
+    file.close();
+
+    uint32_t concurentThreadsSupported = std::max((uint32_t)4, std::thread::hardware_concurrency());
+
+    uint32_t numPerThread = std::ceil(float(nRec) / float(concurentThreadsSupported));
+
+    std::vector<std::thread> threadpool;
+    for(uint32_t i = 0; i < concurentThreadsSupported; i++)
+    {
+        threadpool.push_back(std::thread(ThreadedRead, data, statChan, buffer, i * numPerThread, std::min(nRec, (i + 1) * numPerThread), nChannels, nSampRec , statusChanIdx));
+    }
+
+    for(auto& t : threadpool){
+        t.join();
+    }
+
+    // size_t pos = 0;
+    // for(long k = 0; k < nRec; k++)
+    // {
+    //     for(int ch = 0; ch < nChannels; ch++)
+    //     {
+    //         if(ch != statusChanIdx){
+    //             for(int m = 0; m < nSampRec; m++){
+    //                 data(ch, (k * nSampRec) + m) = ((buffer[pos] << 8) |
+    //                                                (buffer[pos + 1] << 16) |
+    //                                                (buffer[pos + 2] << 24)) >> 8;
+    //                 pos += 3;
+    //             }
+    //         } else {
+    //             for(int m = 0; m < nSampRec; m++){
+    //                 statChan(0, (k * nSampRec) + m) = buffer[pos];
+    //                 statChan(1, (k * nSampRec) + m) = buffer[pos + 1];
+    //                 statChan(2, (k * nSampRec) + m) = buffer[pos + 2];
+    //                 pos += 3;
+    //             }
+    //         }
+    //     }
+    // }
 
     free(buffer);
 }

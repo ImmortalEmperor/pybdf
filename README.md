@@ -12,9 +12,6 @@ git clone https://github.com/ImmortalEmperor/pybdf.git
 
 cd pybdf && pip install .
 
-TODO:
-Add multi-threading to C++ version for faster import
-
 ======
 
 _From original:_

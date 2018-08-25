@@ -14,8 +14,8 @@ except:
 #downloads example datasets from BIOSEMI
 #if you're on windows or mac, download manually
 # http://www.biosemi.com/download/BDFtestfiles.zip
-#subprocess.call("wget http://www.biosemi.com/download/BDFtestfiles.zip", shell=True)
-#subprocess.call("unzip BDFtestfiles.zip", shell=True)
+# subprocess.call("wget http://www.biosemi.com/download/BDFtestfiles.zip", shell=True)
+# subprocess.call("unzip BDFtestfiles.zip", shell=True)
 fName1 = "Newtest17-256.bdf"
 fName2 = "Newtest17-2048.bdf"
 #let's see how long it takes

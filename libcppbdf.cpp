@@ -11,9 +11,9 @@ namespace py = pybind11;
 
 typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowMatrixXi;
 
-typedef Eigen::Matrix<short, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> RowMatrixXs;
+typedef Eigen::Matrix<uint8_t, 3, Eigen::Dynamic, Eigen::RowMajor> RowMatrix3ui;
 
-void ThreadedRead(Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan, uint8_t* buffer, uint32_t start, uint32_t end, uint16_t nChannels, uint16_t nSampRec, uint32_t statusChanIdx){
+void ThreadedRead(Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrix3ui> statChan, uint8_t* buffer, uint32_t start, uint32_t end, uint16_t nChannels, uint16_t nSampRec, uint32_t statusChanIdx){
     uint32_t pos = start * 3 * nChannels * nSampRec;
     for(int k = start; k < end; k++){
         for(int ch = 0; ch < nChannels; ch++)
@@ -37,10 +37,10 @@ void ThreadedRead(Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan
     }
 }
 
-void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statChan, char* filename, 
+void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrix3ui> statChan, char* filename, 
                    int starttime, int endtime, int nChannels, int nSampRec, int statusChanIdx)
 {
-    std::ifstream file = std::ifstream(filename, std::ifstream::in | std::ifstream::binary);
+    std::ifstream file (filename, std::ifstream::in | std::ifstream::binary);
 
     assert(file.is_open());
 
@@ -49,7 +49,7 @@ void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statCha
 
     file.seekg(0, file.end);
     
-    size_t length = file.tellg() - startpos;
+    size_t length = uint32_t(file.tellg()) - startpos;
     
     file.seekg(0, file.beg); 
     file.clear();
@@ -76,70 +76,91 @@ void ReadChannels( Eigen::Ref<RowMatrixXi> data, Eigen::Ref<RowMatrixXs> statCha
         t.join();
     }
 
-    // size_t pos = 0;
-    // for(long k = 0; k < nRec; k++)
-    // {
-    //     for(int ch = 0; ch < nChannels; ch++)
-    //     {
-    //         if(ch != statusChanIdx){
-    //             for(int m = 0; m < nSampRec; m++){
-    //                 data(ch, (k * nSampRec) + m) = ((buffer[pos] << 8) |
-    //                                                (buffer[pos + 1] << 16) |
-    //                                                (buffer[pos + 2] << 24)) >> 8;
-    //                 pos += 3;
-    //             }
-    //         } else {
-    //             for(int m = 0; m < nSampRec; m++){
-    //                 statChan(0, (k * nSampRec) + m) = buffer[pos];
-    //                 statChan(1, (k * nSampRec) + m) = buffer[pos + 1];
-    //                 statChan(2, (k * nSampRec) + m) = buffer[pos + 2];
-    //                 pos += 3;
-    //             }
-    //         }
-    //     }
-    // }
-
     free(buffer);
 }
 
-//constexpr bool rowMajor = Matrix::Flags & Eigen::RowMajorBit;
+
+//TODO switch writing to do it in memory AKA read whole file to buffer, edit with threads, then output buffer back to file
+void WriteTriggers(py::array_t<uint8_t> code, py::array_t<int64_t> idx, char* filename, 
+                   const int duration, const int nChannels, const int nSampRec,  const int statusChanIdx)
+{
+    auto buf_code = code.request();
+    auto buf_idx = idx.request();
+    
+    if(buf_code.ndim != 1 || buf_idx.ndim != 1){
+        std::cout << "Too many dim got: " << buf_code.ndim << " and: " << buf_idx.ndim << std::endl;
+        exit(-1);
+    }
+
+    if(buf_code.shape[0] != buf_idx.shape[0]){
+        std::cout << "Code shape[0]: " << buf_code.shape[0] << "does not match idx shape[0]: " << buf_idx.shape[0] << std::endl;
+        exit(-1);
+    }
+
+    //std::cout << "Updating file of " << duration << " seconds " << nChannels << " channels " << nSampRec << " records " << std::endl;
+
+    std::ofstream out_file(filename, std::ofstream::out | std::ofstream::binary | std::ofstream::ate);
+
+    assert(out_file.is_open());
+
+    uint32_t startpos = (nChannels + 1) * 256;
+
+    out_file.seekp(out_file.beg);
+
+    //seek to first trigger block
+    out_file.seekp(startpos + statusChanIdx * 3 * nSampRec);
+
+    uint32_t i = 0; 
+    uint32_t current = 0;
+    bool bWriteZero = true;
+    uint8_t zero = 0;
+
+    uint64_t* idxPtr = (uint64_t*)buf_idx.ptr;
+    uint8_t* codePtr = (uint8_t*)buf_code.ptr;
+
+    while(i < duration)
+    {
+        //std::cout << "Writing second: " << i << std::endl;
+        // for(ushort s = 0; s < nSampRec; s++)
+        // {
+        //     bWriteZero = true;
+            
+        //     if(current < buf_idx.shape[0])
+        //     {
+        //         if (idxPtr[current] == (i * nSampRec) + s)
+        //         {
+        //             out_file.write((const char*)&codePtr[current], sizeof(uint8_t));
+        //             bWriteZero = false;
+        //             current++;
+        //         }
+        //     }
+            
+        //     if (bWriteZero)
+        //     {
+        //         out_file.write((const char*)&zero, sizeof(uint8_t));
+        //     }
+
+        //     //skip next 2 characters
+        //     out_file.seekp(2);
+        // }
+        
+        i++;
+
+        //seek to next trigger block
+        out_file.seekp(statusChanIdx * 3 * nSampRec);
+    }
+    
+    out_file.close();
+
+    if(current < buf_idx.shape[0]){
+        std::cout << "Triggers out of data bounds" << std::endl;
+    }
+
+}
 
 PYBIND11_MODULE(libcppbdf,m)
 {
   m.doc() = "pybdf c++ version dll";
-
-//   py::class_<Matrix>(m, "Matrix", py::buffer_protocol())
-//     .def("__init__", [](Matrix &m, py::buffer b) {
-//         typedef Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic> Strides;
-
-//         /* Request a buffer descriptor from Python */
-//         py::buffer_info info = b.request();
-
-//         /* Some sanity checks ... */
-//         if (info.ndim != 2)
-//             throw std::runtime_error("Incompatible buffer dimension!");
-
-//         auto strides = Strides(
-//             info.strides[rowMajor ? 0 : 1] / (py::ssize_t)sizeof(int),
-//             info.strides[rowMajor ? 1 : 0] / (py::ssize_t)sizeof(int));
-
-//         auto map = Eigen::Map<Matrix, 0, Strides>(
-//             static_cast<int *>(info.ptr), info.shape[0], info.shape[1], strides);
-
-//         new (&m) Matrix(map);
-//     })
-//     .def_buffer([](Matrix &m) -> py::buffer_info {
-//         return py::buffer_info(
-//             m.data(),                                   /* Pointer to buffer */
-//             sizeof(int),                                /* Size of one scalar */
-//             py::format_descriptor<int>::format(),       /* Python struct-style format descriptor */
-//             2,                                          /* Number of dimensions */
-//             { m.rows(), m.cols() },                     /* Buffer dimensions */
-//             { sizeof(int) * (rowMajor ? m.cols() : 1),
-//             sizeof(int) * (rowMajor ? 1 : m.rows()) }
-//                                                         /* Strides (in bytes) for each index */
-//         );
-//     }); // End class matrix
-
   m.def("read_channels", &ReadChannels);
+  m.def("write_triggers", &WriteTriggers);
 }

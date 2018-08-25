@@ -240,14 +240,14 @@ class bdfRecording:
         recordsToRead = end - beginning
         if useCpp or 'Win' in platform.platform():
             data = numpy.zeros((self.nChannels - 1, self.nSampRec[0] * (end - beginning)), dtype=numpy.int32)
-            statchan = numpy.zeros((3, self.nSampRec[0] * (end - beginning)), dtype=numpy.int16)
+            statchan = numpy.zeros((3, self.nSampRec[0] * (end - beginning)), dtype=numpy.uint8)
 
             libcppbdf.read_channels(data, statchan, self.fileName, beginning, end, self.nChannels, self.nSampRec[0], self.statusChanIdx)       
         else:
             data, statchan = libforbdf.read_channels(self.fileName, beginning, end, self.nChannels, self.nSampRec, self.statusChanIdx)
         
         data = (data*self.scaleFactor[0]).astype(numpy.float32)
-        trigChannel = statchan[0,:].astype(numpy.uint8)
+        trigChannel = statchan[0,:]
         trigChannel2 = statchan[1,:]
         sysCodeChannel = statchan[2,:]
         chanToDel = []
@@ -274,7 +274,6 @@ class bdfRecording:
             evtTab['idx'] = None
             evtTab['dur'] = None
             
-
         rec = {}
         rec['data'] = data
         if trigChan == True:
@@ -289,3 +288,7 @@ class bdfRecording:
         rec['eventTable'] = evtTab
         return rec
 
+    def write_triggers(self, codes, times):
+        libcppbdf.write_triggers(codes, times, self.fileName, int(self.duration), self.nChannels, self.nSampRec[0], self.statusChanIdx)
+        print('-- Done Writing --')
+        

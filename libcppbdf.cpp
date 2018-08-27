@@ -1,11 +1,13 @@
 #include <fstream>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#include <pybind11/eigen.h>
 #include <thread>
 #include <vector>
 #include <cmath>
 #include <algorithm>
+
+#include "pybind11/numpy.h"
+#include "pybind11/eigen.h"
+
+typedef unsigned short ushort;
 
 namespace py = pybind11;
 
@@ -157,6 +159,8 @@ void WriteTriggers(py::array_t<uint8_t> code, py::array_t<int64_t> idx, char* fi
     if(current < buf_idx.shape[0]){
         std::cout << "Triggers out of data bounds" << std::endl;
     }
+    
+    std::cout << "-- Done Writing --" << std::endl;
 
 }
 

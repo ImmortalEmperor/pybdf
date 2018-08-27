@@ -14,7 +14,7 @@ if 'Win' not in platform.platform():
 
 extentions.append( Extension(   name = 'libcppbdf',
                     sources = ['libcppbdf.cpp'],
-                    include_dirs = [pybind11.get_include(), pybind11.get_include(True), '/home/aidan/.local/include/eigen/'],
+                    include_dirs = [pybind11.get_include(), pybind11.get_include(True), '/home/aidan/.local/include/eigen/', 'd:/repos/eigen'],
                     language = 'c++'))
 
 setup(name="pybdf",    

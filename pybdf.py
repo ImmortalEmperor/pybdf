@@ -290,5 +290,4 @@ class bdfRecording:
 
     def write_triggers(self, codes, times):
         libcppbdf.write_triggers(codes, times, self.fileName, int(self.duration), self.nChannels, self.nSampRec[0], self.statusChanIdx)
-        print('-- Done Writing --')
         

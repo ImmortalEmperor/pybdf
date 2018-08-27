@@ -97,9 +97,11 @@ void WriteTriggers(py::array_t<uint8_t> code, py::array_t<int64_t> idx, char* fi
         exit(-1);
     }
 
-    //std::cout << "Updating file of " << duration << " seconds " << nChannels << " channels " << nSampRec << " records " << std::endl;
+    std::cout << "Updating file of " << duration << " seconds " << nChannels << " channels " << nSampRec << " records " << std::endl;
 
-    std::ofstream out_file(filename, std::ofstream::out | std::ofstream::binary | std::ofstream::ate);
+    std::cout << "Recieved " << buf_code.shape[0] << " codes at " << buf_idx.shape[0] << " indices" << std::endl;
+
+    std::fstream out_file(filename, std::ios_base::binary | std::ios_base::out | std::ios_base::in);
 
     assert(out_file.is_open());
 
@@ -120,34 +122,34 @@ void WriteTriggers(py::array_t<uint8_t> code, py::array_t<int64_t> idx, char* fi
 
     while(i < duration)
     {
-        //std::cout << "Writing second: " << i << std::endl;
-        // for(ushort s = 0; s < nSampRec; s++)
-        // {
-        //     bWriteZero = true;
+        for(ushort s = 0; s < nSampRec; s++)
+        {
+            bWriteZero = true;
             
-        //     if(current < buf_idx.shape[0])
-        //     {
-        //         if (idxPtr[current] == (i * nSampRec) + s)
-        //         {
-        //             out_file.write((const char*)&codePtr[current], sizeof(uint8_t));
-        //             bWriteZero = false;
-        //             current++;
-        //         }
-        //     }
+            if(current < buf_idx.shape[0])
+            {
+                if (idxPtr[current] == (i * nSampRec) + s)
+                {
+                    //std::cout << "Writing code " << int(codePtr[current]) << " from index " << current << " at time " << i * nSampRec + s << " should be " << idxPtr[current] << std::endl;
+                    out_file.write((const char*)&codePtr[current], sizeof(uint8_t));
+                    bWriteZero = false;
+                    current++;
+                }
+            }
             
-        //     if (bWriteZero)
-        //     {
-        //         out_file.write((const char*)&zero, sizeof(uint8_t));
-        //     }
+            if (bWriteZero)
+            {
+                out_file.write((const char*)&zero, sizeof(uint8_t));
+            }
 
-        //     //skip next 2 characters
-        //     out_file.seekp(2);
-        // }
+            //skip next 2 characters
+            out_file.seekp(2, std::ios_base::cur);
+        }
         
         i++;
 
         //seek to next trigger block
-        out_file.seekp(statusChanIdx * 3 * nSampRec);
+        out_file.seekp(statusChanIdx * 3 * nSampRec, std::ios_base::cur);
     }
     
     out_file.close();

@@ -58,7 +58,11 @@ rec_out = pybdf.bdfRecording(files[1])
 out_cpp_codes = np.arange(1, cpp_event['code'].shape[0] + 1, 1, dtype=np.uint8)
 out_cpp_times = (cpp_event['idx'] + 1)
 
-#rec_out.write_triggers(out_cpp_codes, out_cpp_times)
+# print(len(out_cpp_codes), len(out_cpp_times))
+
+# print(out_cpp_codes, '\n', out_cpp_times)
+
+rec_out.write_triggers(out_cpp_codes, out_cpp_times)
 
 test_cpp_data, test_cpp_event, test_cpp_chan = importBDF(files[1], useCpp=True)
 

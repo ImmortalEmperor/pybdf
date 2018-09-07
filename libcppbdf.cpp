@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 #include "pybind11/numpy.h"
 #include "pybind11/eigen.h"
